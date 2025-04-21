@@ -12,7 +12,7 @@
 		"dev:build": "esbuild dev.ts ./src --bundle --outdir=dist --packages=external --platform=node --sourcemap --watch",
 		"dev:run": "node --inspect --no-warnings --loader ./dist/dev.js --watch dist/src",
 		"build": "esbuild index=./src --bundle --minify --outdir=dist --packages=external --platform=node",
-		"start": "ts-node src/server.ts"
+		"start": "ts-node src/index.ts"
 	},
 	"dependencies": {
 		"esbuild": "^0.17.16",
