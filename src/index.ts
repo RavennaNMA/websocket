@@ -1,36 +1,41 @@
-import { heartbeat, keepAlive } from "./utils/keepalive.js"
-import { ask } from "./utils/log.js"
-import {
-	broadcastMessage,
-	chooseNickname,
-	chooseRoom,
-	close,
-} from "./utils/message.js"
-import { Socket, newState } from "./utils/state.js"
-import { WebSocketServer } from "ws"
+import { WebSocketServer, WebSocket } from "ws"
 
-const wss = new WebSocketServer({ port: Number(process.env.PORT) })
+const PORT = Number(process.env.PORT) || 3000
+const wss = new WebSocketServer({ port: PORT })
 
-wss.on("connection", (ws: Socket) => {
-	const state = newState(ws)
-	ask(ws, "Room Code")
+let esp32Socket: WebSocket | null = null
+
+wss.on("connection", (ws: WebSocket) => {
+	console.log("🟢 新連線已建立")
 
 	ws.on("message", (data) => {
-		const message = data.toString()
+		const msg = data.toString()
+		console.log("📩 收到訊息:", msg)
 
-		switch (state.status) {
-			case "ROOM":
-				return chooseRoom(message, state)
-			case "NICKNAME":
-				return chooseNickname(message, state)
-			default:
-				return broadcastMessage(message, state)
+		if (msg === "esp32") {
+			esp32Socket = ws
+			console.log("✅ ESP32 已註冊")
+			return
+		}
+
+		if (msg === "move") {
+			console.log("🎮 控制端傳來 move 指令")
+
+			if (esp32Socket && esp32Socket.readyState === WebSocket.OPEN) {
+				esp32Socket.send("move")
+				console.log("➡️ 已轉發 move 給 ESP32")
+			} else {
+				console.log("⚠️ ESP32 尚未連線或已中斷")
+			}
 		}
 	})
 
-	ws.on("pong", heartbeat)
-	ws.on("close", () => close(state))
+	ws.on("close", () => {
+		if (ws === esp32Socket) {
+			console.log("❌ ESP32 離線")
+			esp32Socket = null
+		}
+	})
 })
 
-const interval = keepAlive(wss)
-wss.on("close", () => clearInterval(interval))
+console.log(`🚀 WebSocket Server 正在 port ${PORT} 上運行`)
